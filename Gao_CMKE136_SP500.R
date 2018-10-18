@@ -14,13 +14,15 @@ plot(Date, Close, main = "S&P 500 Stock Market Index", xlab = "Year", ylab = "Cl
 
 #Step 2: Stationarize the time series
 
-#step 2.1 Stationarity check - Dicky-Fuller test 
-adf.test(Close, alternative = "stationary") 
+#step 2.1 Create time series object and remove any potential outliers
+ts_close <- tsclean(ts(sp500[, c('Close')], frequency = 365.25))
+  
+#step 2.2 Stationarity check - Dicky-Fuller test  
+adf.test(ts_close, alternative = "stationary") 
 #p-value > 0.5 so accept null hypothesis - non-stationary
 
-
-#step 2.2 Differencing series to make it stationary, d=1
-close_d1 <- diff(Close, differences = 1)
+#step 2.3 Differencing series to make it stationary, d=1
+close_d1 <- diff(ts_close, differences = 1)
 plot(close_d1)
 adf.test(close_d1, alternative = "stationary")
 
@@ -33,19 +35,23 @@ acf(close_d1, main = "ACF for Differenced Series")
 pacf(close_d1, main = "PACF for Differenced Series")
 
 #Step 4: Build and fit ARIMA model
-arima(close_d1, order=c(0,0,0))  #aic = 10685.41
-arima(close_d1, order=c(1,0,0))  #aic = 10686.73
-arima(close_d1, order=c(1,0,1))  #aic = 10679.06, lowest
-arima(close_d1, order=c(0,0,1))  #aic = 10686.63
-arima(close_d1, order=c(0,0,2))  #aic = 10683.67
-arima(close_d1, order=c(2,0,0))  #aic = 10683.75
+arima(close_d1, order=c(0,0,0))  #ARIMA(0,1,0) aic = 10685.41
+arima(close_d1, order=c(1,0,0))  #ARIMA(1,1,0) aic = 10686.73
+arima(close_d1, order=c(1,0,1))  #ARIMA(1,1,1) aic = 10679.06, lowest
+arima(close_d1, order=c(0,0,1))  #ARIMA(0,1,1) aic = 10686.63
+arima(close_d1, order=c(0,0,2))  #ARIMA(0,1,2) aic = 10683.67
+arima(close_d1, order=c(2,0,0))  #ARIMA(2,1,0) aic = 10683.75
 
 auto.arima(close_d1, seasonal = FALSE)
 
-#Step 5: Predict and iterate with different time periods
-fit <- arima(Close, order = c(1,1,1 ))
+#Step 5: Diagnosis the model
+fit <- auto.arima(ts_close)
+tsdiag(fit)
+
+#Step 6: Make Forecasts
 fcast <- forecast(fit, h=90)
 plot(fcast)
+ 
 
 
 
