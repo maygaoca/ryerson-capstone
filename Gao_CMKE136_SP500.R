@@ -5,13 +5,13 @@ library('tseries')
 
 #Step 1: Load, Visualize and Examine Data
 
-sp500 <- read.csv("C:/Techs/Ryerson-DataScience/CMKE136-Capstone/data/SP500_092013-092018.csv", header = TRUE, stringsAsFactors = FALSE)
+sp500 <- read.csv("C:/Techs/Ryerson-DataScience/CMKE136-Capstone/data/SP500_10012013-09302018.csv", header = TRUE, stringsAsFactors = FALSE)
 
 head(sp500)
 sp500$Date <- as.Date(sp500$Date, format="%Y-%m-%d")
 attach(sp500)
 plot(Date, Close, main = "S&P 500 Stock Market Index", xlab = "Year", ylab = "Close Values")
-
+detach(sp500)
 #Step 2: Stationarize the time series
 
 #step 2.1 Create time series object and remove any potential outliers
@@ -48,9 +48,45 @@ auto.arima(close_d1, seasonal = FALSE)
 fit <- auto.arima(ts_close)
 tsdiag(fit)
 
-#Step 6: Make Forecasts
-fcast <- forecast(fit, h=90)
+#Step 6: Make Forecasts and Cross Validation
+fcast <- forecast(fit, h=30)  
 plot(fcast)
+
+# 6.1 Actual 30days Index from Oct.1st, 2018
+sp500_Oct <- read.csv("C:/Techs/Ryerson-DataScience/CMKE136-Capstone/data/SP500_10012018_11092018.csv", header = TRUE, stringsAsFactors = FALSE)
+
+# 6.2 Calculate forecast accuracy by comparing with actual index closing values
+accuracy(fcast, sp500_Oct$Close)
+
+fit_5years <- arima(ts_close, order=c(1,1,1))
+
+fcast_Oct <- forecast(fit_5years, h=30)
+
+ts_5years_Oct <- (ts(c(sp500$Close, sp500_Oct$Close), frequency = 365.25))
+
+plot(fcast_Oct, main=" ")
+lines(ts_5years_Oct)
+
+#Step 7: Compare ARIMA and SVM Models 
+
+days <- 1:length(sp500$Date)
+df_sp500 <- data.frame(days, sp500$Close)
+colnames(df_sp500) <- c("Dayth", "Close")
+
+# train an svm model, consider further tuning parameters for lower MSE
+svm_mdl <- svm(Close ~ Dayth,data=df_sp500, type="eps-regression",kernel="radial",cost=10000, gamma=10)
+
+#specify timesteps for forecast, for all series + 30 days ahead
+total_days <- length(days) + 30
+num_days <- 1:total_days
+
+#compute forecast for all the days 
+svm_fcast <- predict(svm_mdl, newdata=data.frame(Dayth=num_days))
+plot(svm_fcast)
+accuracy(svm_fcast, sp500_Oct$Close)
+
+
+
  
 
 
